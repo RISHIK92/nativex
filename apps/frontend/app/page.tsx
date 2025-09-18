@@ -37,6 +37,11 @@ export default function Home() {
           </div>
 
           <SignIn
+            routing="hash"
+            signUpUrl="https://obliging-quail-74.accounts.dev/sign-up"
+            fallbackRedirectUrl="/"
+            redirectUrl="/"
+            signUpFallbackRedirectUrl="https://obliging-quail-74.accounts.dev/sign-up"
             appearance={{
               elements: {
                 formButtonPrimary:
