@@ -225,7 +225,7 @@ export default function ChatWindow({
         <div className="flex-1 p-6 bg-gray-100">
           <div className="w-full h-full bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
             <iframe
-              src={`${WORKER_URL}`}
+              src={`${WORKER_URL}/?folder=/tmp/bolty-worker`}
               width="100%"
               height="100%"
               className="border-none"
