@@ -1,110 +1,149 @@
-import express from "express";
-import cors from "cors";
-import { prismaClient } from "db/client";
+import { prisma } from "./config/db";
 import { systemPrompt } from "./systemPrompt";
 import { ArtifactProcessor } from "./parser";
-import { onFileUpdate, onShellCommand } from "./os";
+import Redis from "ioredis";
+import { os } from "./os";
 
-const app = express();
-app.use(express.json());
-app.use(cors());
+const redis = new Redis(process.env.REDIS_URL as string);
+const system = os();
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
+async function worker() {
+  const projectId = process.env.PROJECT_ID || "";
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-app.post("/prompt", async (req, res) => {
-  const { prompt, projectId } = req.body;
-
-  console.log(projectId, prompt, "sdc");
-
-  await prismaClient.prompt.create({
-    data: {
-      content: prompt,
-      projectId,
-      type: "USER",
-    },
-  });
-
-  const allPrompts = await prismaClient.prompt.findMany({
-    where: { projectId },
-    orderBy: { createdAt: "asc" },
-  });
-
-  let artifactProcessor = new ArtifactProcessor(
-    "",
-    (filePath, fileContent) => onFileUpdate(filePath, fileContent, projectId),
-    (shellCommand) => onShellCommand(shellCommand, projectId)
-  );
-
-  let artifact = "";
-
-  const response = await fetch(
-    "https://api.groq.com/openai/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "llama3-70b-8192",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...allPrompts.map((p: any) => ({
-            role: p.type === "USER" ? "user" : "assistant",
-            content: p.content,
-          })),
-        ],
-        stream: true,
-      }),
-    }
-  );
-
-  if (!response.ok || !response.body) {
-    console.error("Groq request failed");
-    return res.status(500).json({ error: "Failed to generate response" });
+  if (!projectId) {
+    console.error("[Worker] ❌ No Project ID found in environment.");
+    process.exit(1);
   }
 
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
+  console.log(`[Worker] 🚀 Starting worker for Project: ${projectId}`);
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
+  try {
+    console.log("[Worker] 🔄 Updating Redis status to GENERATING...");
+    await redis.set(`project:${projectId}:status`, "GENERATING");
 
-    const chunk = decoder.decode(value);
-    const lines = chunk.split("\n").filter(Boolean);
+    console.log("[Worker] 📂 Fetching prompt history from DB...");
+    const allPrompts = await prisma.prompt.findMany({
+      where: { projectId },
+      orderBy: { createdAt: "asc" },
+    });
+    console.log(`[Worker] ✅ Found ${allPrompts.length} previous prompts.`);
 
-    for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const raw = line.replace("data: ", "");
-        if (raw === "[DONE]") continue;
+    let artifactProcessor = new ArtifactProcessor(
+      "",
+      (filePath, fileContent) => {
+        console.log(`[Worker] 📝 Writing file: ${filePath}`);
+        return system.onFileUpdate(filePath, fileContent, projectId);
+      },
+      // Shell Command Callback
+      (shellCommand) => {
+        console.log(
+          `[Worker] 🐚 AI suggested command: ${shellCommand} (Skipping execution)`
+        );
+        return null;
+      }
+    );
 
-        try {
-          const json = JSON.parse(raw);
-          const delta = json.choices?.[0]?.delta?.content;
-          if (delta) {
-            artifactProcessor.append(delta);
-            artifactProcessor.parse();
-            artifact += delta;
-          }
-        } catch (err) {
-          console.error("Stream parse error", err);
+    let artifact = "";
+
+    console.log("[Worker] 🤖 Sending request to Gemini AI...");
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${GEMINI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gemini-2.0-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...allPrompts.map((p: any) => ({
+              role: p.type === "USER" ? "user" : "assistant",
+              content: p.content,
+            })),
+          ],
+          stream: true,
+        }),
+      }
+    );
+
+    console.log(`[Worker] 📡 AI Response Status: ${response.status}`);
+
+    if (!response.ok || !response.body) {
+      const errorText = await response.text();
+      console.error("[Worker] ❌ API Error Details:", errorText);
+      await redis.set(`project:${projectId}:status`, "ERROR");
+      return { error: "Failed to generate response" };
+    }
+
+    console.log("[Worker] 🌊 Streaming started...");
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    let chunkCount = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        console.log("[Worker] 🌊 Stream finished.");
+        break;
+      }
+
+      const chunk = decoder.decode(value);
+      const lines = chunk.split("\n").filter(Boolean);
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const raw = line.replace("data: ", "");
+          if (raw === "[DONE]") continue;
+
+          try {
+            const json = JSON.parse(raw);
+            const delta = json.choices?.[0]?.delta?.content;
+            if (delta) {
+              artifactProcessor.append(delta);
+              artifactProcessor.parse();
+              artifact += delta;
+            }
+          } catch (err) {}
         }
       }
+
+      chunkCount++;
+      if (chunkCount % 50 === 0) {
+        process.stdout.write(".");
+      }
     }
+    console.log("");
+
+    console.log("[Worker] 💾 Saving system prompt to DB...");
+    await prisma.prompt.create({
+      data: {
+        content: artifact,
+        projectId,
+        type: "SYSTEM",
+      },
+    });
+
+    console.log("[Worker] ✅ Marking project as READY...");
+    await redis.set(`project:${projectId}:status`, "READY");
+
+    return { result: artifact };
+  } catch (err) {
+    await redis.set(`project:${projectId}:status`, "ERROR");
+    console.error("[Worker] ❌ CRITICAL FAILURE:", err);
+    process.exit(1);
   }
+}
 
-  await prismaClient.prompt.create({
-    data: {
-      content: artifact,
-      projectId,
-      type: "SYSTEM",
-    },
+worker()
+  .then(() => {
+    console.log("[Worker] 👋 Exiting process with code 0.");
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error("[Worker] ❌ Unhandled Rejection:", err);
+    process.exit(1);
   });
-
-  res.json({ status: "ok", result: artifact });
-});
-
-app.listen(9090, () => {
-  console.log("Server running on http://localhost:9090");
-});

@@ -75,11 +75,20 @@ function useProjects() {
   return projects;
 }
 
-export default function Sidebar() {
+export default function Sidebar({
+  isOpen: externalIsOpen,
+  setIsOpen: externalSetIsOpen,
+}: {
+  isOpen?: boolean;
+  setIsOpen?: (isOpen: boolean) => void;
+}) {
   const projects = useProjects();
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [searchString, setSearchString] = useState("");
   const router = useRouter();
+
+  const isOpen = externalIsOpen ?? internalIsOpen;
+  const setIsOpen = externalSetIsOpen ?? setInternalIsOpen;
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {

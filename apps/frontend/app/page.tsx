@@ -1,6 +1,6 @@
 "use client";
 
-import type React from "react";
+import React, { useState } from "react";
 
 import { useAuth } from "@clerk/nextjs";
 import { SignIn } from "@clerk/nextjs";
@@ -12,6 +12,7 @@ import { FloatingElements } from "@/components/FloatingElement";
 
 export default function Home() {
   const { isSignedIn, isLoaded } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
   // Show loading state while Clerk is initializing
   if (!isLoaded) {
@@ -19,7 +20,6 @@ export default function Home() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="relative">
           <div className="w-16 h-16 border-4 border-gray-200 border-t-gray-900 rounded-full animate-spin"></div>
-          <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-amber-700 rounded-full animate-spin animate-reverse"></div>
         </div>
       </div>
     );
@@ -28,8 +28,8 @@ export default function Home() {
   // Show sign-in if user is not authenticated
   if (!isSignedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-amber-50 flex items-center justify-center relative overflow-hidden">
-        <FloatingElements />
+      <div className="min-h-screen bg-white flex items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
 
         <div className="text-center relative z-10">
           <div className="mb-8">
@@ -41,15 +41,15 @@ export default function Home() {
               elements: {
                 formButtonPrimary:
                   "bg-gray-900 text-white hover:bg-gray-800 transition-all duration-200",
-                card: "bg-white/90 backdrop-blur-xl border border-gray-200 shadow-2xl",
+                card: "bg-white/80 backdrop-blur-xl border border-gray-200 shadow-2xl",
                 headerTitle: "text-gray-900",
                 headerSubtitle: "text-gray-600",
                 socialButtonsBlockButton:
-                  "bg-gray-50 border-gray-200 text-gray-900 hover:bg-gray-100",
+                  "bg-white border-gray-200 text-gray-900 hover:bg-gray-50",
                 formFieldLabel: "text-gray-700",
                 formFieldInput:
-                  "bg-white border-gray-300 text-gray-900 focus:border-amber-600",
-                footerActionLink: "text-amber-700 hover:text-amber-800",
+                  "bg-white border-gray-300 text-gray-900 focus:border-gray-900",
+                footerActionLink: "text-gray-900 hover:underline",
               },
             }}
           />
@@ -58,84 +58,30 @@ export default function Home() {
     );
   }
 
-  // Show main app for authenticated users
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-amber-50 text-gray-900 relative overflow-hidden">
-      <FloatingElements />
+    <div className="min-h-screen bg-white text-gray-900 relative selection:bg-gray-900 selection:text-white">
+      <Appbar onViewProjects={() => setIsSidebarOpen(true)} />
+      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
-      <Appbar />
-      <Sidebar />
+      <main className="flex-1 flex flex-col items-center justify-center min-h-[calc(100vh-80px)] px-4 relative z-10">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+        <div className="absolute left-0 right-0 top-0 -z-10 m-auto h-[310px] w-[310px] rounded-full bg-amber-500 opacity-20 blur-[100px]"></div>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-6 relative z-10 pt-20">
         {/* Hero Section */}
-        <div className="text-center mb-16 max-w-5xl">
-          <div className="mb-8">
-            <AnimatedLogo size="large" />
-          </div>
-
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight text-gray-900">
-            Build Native Apps
-            <br />
-            <span className="bg-gradient-to-r from-gray-900 to-amber-700 bg-clip-text text-transparent">
-              With AI Power
-            </span>
+        <div className="text-center mb-12 max-w-3xl relative">
+          <h1 className="text-5xl md:text-5xl font-bold mb-6 tracking-tight text-gray-900 leading-tight">
+            What do you want to build?
           </h1>
 
-          <p className="text-xl md:text-2xl text-gray-600 mb-8 font-light max-w-3xl mx-auto leading-relaxed">
-            Transform your ideas into production-ready mobile applications using
-            advanced AI technology
+          <p className="text-xl text-gray-500 font-light max-w-2xl mx-auto leading-relaxed">
+            Prompt, run, edit, and deploy full-stack native apps.
           </p>
-
-          <div className="flex items-center justify-center gap-8 text-sm text-gray-500">
-            <div className="flex items-center gap-2 group">
-              <div className="w-2 h-2 bg-gray-900 rounded-full animate-pulse"></div>
-              <span className="group-hover:text-gray-900 transition-colors">
-                React Native
-              </span>
-            </div>
-            <div className="flex items-center gap-2 group">
-              <div className="w-2 h-2 bg-amber-700 rounded-full animate-pulse delay-300"></div>
-              <span className="group-hover:text-gray-900 transition-colors">
-                AI Generated
-              </span>
-            </div>
-            <div className="flex items-center gap-2 group">
-              <div className="w-2 h-2 bg-gray-700 rounded-full animate-pulse delay-700"></div>
-              <span className="group-hover:text-gray-900 transition-colors">
-                Production Ready
-              </span>
-            </div>
-          </div>
         </div>
 
         {/* Prompt Section */}
-        <div className="w-full max-w-4xl mb-20">
-          <div className="relative">
-            {/* Subtle glow effect */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-gray-900/10 to-amber-700/10 rounded-3xl blur-xl"></div>
-
-            <div className="relative bg-white/90 backdrop-blur-xl border border-gray-200 rounded-2xl p-8 shadow-2xl">
-              <div className="mb-6">
-                <h2 className="text-2xl font-semibold mb-2 text-gray-900">
-                  What do you want to build?
-                </h2>
-                <p className="text-gray-600">
-                  Describe your mobile app idea and watch it come to life
-                </p>
-              </div>
-
-              <Prompt />
-            </div>
-          </div>
-        </div>
-
-        {/* Features Grid */}
-        <div className="max-w-full">
-          <FeatureCard
-            icon={<MobileIcon />}
-            title="Cross Platform"
-            description="Build once, deploy everywhere. iOS and Android from a single codebase"
-          />
+        <div className="w-full max-w-3xl relative">
+          <Prompt />
         </div>
       </main>
     </div>

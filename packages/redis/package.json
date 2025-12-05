@@ -1,5 +1,5 @@
 {
-  "name": "redis",
+  "name": "nativex-redis",
   "module": "index.ts",
   "type": "module",
   "exports": {
@@ -13,6 +13,6 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "redis": "^5.6.0"
+    "redis": "^5.10.0"
   }
 }

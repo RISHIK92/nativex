@@ -1,0 +1,42 @@
+# Dockerfile.user
+FROM codercom/code-server:4.96.4
+
+USER root
+
+# 1. Install System Deps & Node.js
+RUN apt-get update && apt-get install -y \
+    curl openssl build-essential git python3 unzip \
+    net-tools \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Install Bun
+ENV BUN_INSTALL=/usr/local
+RUN curl -fsSL https://bun.sh/install | bash
+
+# 3. PRE-BUILD THE TEMPLATE (The "Golden Master")
+# We build this ONCE inside the image. It saves 30-60s per user.
+WORKDIR /usr/src/expo-template
+# We use npx to create the app.
+# We remove the .git folder so it doesn't conflict with user's git.
+RUN npx create-expo-app@latest .
+
+# 4. Copy the Startup Script
+COPY apps/sandbox/init.sh /usr/local/bin/init.sh
+COPY apps/sandbox/autokill.sh /usr/local/bin/autokill.sh
+
+RUN chmod +x /usr/local/bin/init.sh
+RUN chmod +x /usr/local/bin/autokill.sh
+
+# 5. Setup User Directory
+# We ensure the target directory exists and is owned by coder
+RUN mkdir -p /home/coder/project \
+    && chown -R coder:coder /home/coder/project
+
+WORKDIR /home/coder/project
+USER coder
+
+EXPOSE 8080
+# The init script handles copying the template + starting the server
+ENTRYPOINT ["/usr/local/bin/init.sh"]

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@types/cors": "^2.8.19",
+    "bullmq": "^5.65.0",
     "cors": "^2.8.5"
   }
 }

@@ -23,12 +23,11 @@ export function AnimatedLogo({ size = "small" }: AnimatedLogoProps) {
 
   return (
     <div className="flex items-center gap-4">
-      <div className={`${logoSize} relative`}>
+      {/* <div className={`${logoSize} relative`}>
         <svg
           viewBox="0 0 100 100"
           className={`w-full h-full transition-all duration-1000 ${isAnimating ? "rotate-180 scale-110" : ""}`}
         >
-          {/* Outer ring */}
           <circle
             cx="50"
             cy="50"
@@ -43,11 +42,9 @@ export function AnimatedLogo({ size = "small" }: AnimatedLogoProps) {
             }}
           />
 
-          {/* Inner elements */}
           <g
             className={`transition-all duration-1000 ${isAnimating ? "scale-75" : "scale-100"}`}
           >
-            {/* Mobile phone shape */}
             <rect
               x="35"
               y="25"
@@ -59,7 +56,6 @@ export function AnimatedLogo({ size = "small" }: AnimatedLogoProps) {
               strokeWidth="2"
             />
 
-            {/* Screen */}
             <rect
               x="39"
               y="32"
@@ -70,7 +66,6 @@ export function AnimatedLogo({ size = "small" }: AnimatedLogoProps) {
               className={`transition-all duration-1000 ${isAnimating ? "opacity-100" : "opacity-70"}`}
             />
 
-            {/* Code brackets */}
             <text
               x="50"
               y="55"
@@ -97,7 +92,7 @@ export function AnimatedLogo({ size = "small" }: AnimatedLogoProps) {
             </linearGradient>
           </defs>
         </svg>
-      </div>
+      </div> */}
 
       <div className={`${textSize} font-bold tracking-tight`}>
         <span className="text-gray-900">Native</span>

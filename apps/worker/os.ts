@@ -1,43 +1,45 @@
-import { prismaClient } from "db/client";
+import { prisma } from "./config/db";
 
-const BASE_WORKER_DIR = "/tmp/bolty-worker";
+export function os() {
+  const BASE_WORKER_DIR = "/home/coder/project";
 
-if (!Bun.file(BASE_WORKER_DIR).exists()) {
-  Bun.write(BASE_WORKER_DIR, "");
-}
-
-export async function onFileUpdate(
-  filePath: string,
-  fileContent: string,
-  projectId: string
-) {
-  await Bun.write(`${BASE_WORKER_DIR}/${filePath}`, fileContent);
-  await prismaClient.action.create({
-    data: {
-      projectId,
-      content: `Updated file ${filePath}`,
-    },
-  });
-}
-
-export async function onShellCommand(shellCommand: string, projectId: string) {
-  //npm run build && npm run start
-  const commands = shellCommand
-    .split("&&")
-    .map((cmd) => cmd.trim())
-    .filter((cmd) => cmd.length > 0); // ← filters out empty parts
-
-  for (const command of commands) {
-    console.log("Running command: ", `${command}`);
-    console.log(BASE_WORKER_DIR);
-    const result = Bun.spawnSync({
-      cmd: command.split(" "),
-      cwd: BASE_WORKER_DIR,
-    });
-    console.log(result.stdout);
-    console.log(result.stderr.toString());
-    await prismaClient.action.create({
-      data: { projectId, content: `Ran command: ${command}` },
+  async function onFileUpdate(
+    filePath: string,
+    fileContent: string,
+    projectId: string
+  ) {
+    await Bun.write(`${BASE_WORKER_DIR}/${filePath}`, fileContent);
+    await prisma.action.create({
+      data: {
+        projectId,
+        content: `Updated file ${filePath}`,
+      },
     });
   }
+
+  async function onShellCommand(shellCommand: string, projectId: string) {
+    //npm run build && npm run start
+    const commands = shellCommand
+      .split("&&")
+      .map((cmd) => cmd.trim())
+      .filter((cmd) => cmd.length > 0); // ← filters out empty parts
+
+    for (const command of commands) {
+      const result = Bun.spawnSync({
+        cmd: ["sh", "-c", command],
+        cwd: BASE_WORKER_DIR,
+      });
+      const stdout = result.stdout.toString();
+      const stderr = result.stderr.toString();
+      const output = stdout || stderr;
+
+      await prisma.action.create({
+        data: {
+          projectId,
+          content: `Ran command: ${command}\nOutput: ${output}`,
+        },
+      });
+    }
+  }
+  return { onFileUpdate, onShellCommand };
 }

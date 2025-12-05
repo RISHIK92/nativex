@@ -12,22 +12,33 @@ interface Action {
   createdAt: Date;
 }
 
+interface Prompt {
+  id: string;
+  content: string;
+  type: "USER" | "SYSTEM";
+  createdAt: Date;
+}
+
 export function useAction(projectId?: string) {
   const [actions, setActions] = useState<Action[]>([]);
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [status, setStatus] = useState<string>("PENDING");
   const { getToken } = useAuth();
 
   useEffect(() => {
     async function getActions() {
       const token = await getToken();
-      const actions = await axios.get(`${BACKEND_URL}/actions/${projectId}`, {
+      const response = await axios.get(`${BACKEND_URL}/actions/${projectId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setActions(actions.data.actions);
+      setActions(response.data.actions);
+      setPrompts(response.data.prompts);
+      setStatus(response.data.result);
     }
     getActions();
     let interval = setInterval(getActions, 5000);
     return () => clearInterval(interval);
   }, []);
 
-  return { actions };
+  return { actions, prompts, status };
 }
