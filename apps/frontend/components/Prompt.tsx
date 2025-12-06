@@ -11,9 +11,9 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 
 const suggestions = [
-  "Create a fitness tracking app with workout plans",
   "Create a task management app",
   "Create a Basic Amazon Homepage clone",
+  "Create a fitness tracking app with workout plans in homepage",
 ];
 
 export default function Prompt() {
