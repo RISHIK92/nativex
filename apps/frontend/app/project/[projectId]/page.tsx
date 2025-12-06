@@ -360,7 +360,7 @@ export default function ChatWindow({
                 <code className="bg-blue-100 px-1.5 py-0.5 rounded font-mono text-xs font-medium text-blue-900">
                   npm run web
                 </code>{" "}
-                is running in the terminal to view the mobile preview.
+                is running. The preview may take 1-2 minutes to initialize. If it doesn't appear, please check your terminal for errors.
               </span>
             </div>
           )}
