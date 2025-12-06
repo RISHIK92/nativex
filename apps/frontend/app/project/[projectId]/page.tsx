@@ -358,7 +358,7 @@ export default function ChatWindow({
               <span>
                 Ensure{" "}
                 <code className="bg-blue-100 px-1.5 py-0.5 rounded font-mono text-xs font-medium text-blue-900">
-                  npm start
+                  npm run web
                 </code>{" "}
                 is running in the terminal to view the mobile preview.
               </span>
